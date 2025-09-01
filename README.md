@@ -1,6 +1,6 @@
 # 🛡️ SecureAPK – APK Malware Analysis Platform
 
-![Static Analysis](API_WEBAPP/images/splash.jpg)
+![Static Analysis](API_WEBAPP/images/splash1.jpg)
 SecureAPK is a **multi-platform malware analysis tool** that performs **static APK analysis, ML-based detection, and threat intelligence integration (VirusTotal + MalwareBazaar)**.  
 It comes with a **Flask REST API**, a **Web Dashboard**, and an **Android (Flutter) client** with the same analysis capabilities and UI.
 
