@@ -1,6 +1,6 @@
-# 🛡️ BankShield – APK Malware Analysis Platform
+# 🛡️ SecureAPK – APK Malware Analysis Platform
 
-BankShield is a **multi-platform malware analysis tool** that performs **static APK analysis, ML-based detection, and threat intelligence integration (VirusTotal + MalwareBazaar)**.  
+SecureBank is a **multi-platform malware analysis tool** that performs **static APK analysis, ML-based detection, and threat intelligence integration (VirusTotal + MalwareBazaar)**.  
 It comes with a **Flask REST API**, a **Web Dashboard**, and an **Android (Flutter) client** with the same analysis capabilities and UI.
 
 ---
@@ -101,8 +101,8 @@ curl -F "file=@/path/to/app.apk" http://127.0.0.1:5000/analyze
 
 ```bash
 # Clone repo
-git clone https://github.com/yourusername/bankshield.git
-cd bankshield/api
+git clone git@github.com:hackyshadab/SecureAPK.git
+cd SecureAPK/API_WEBAPP/
 
 # Create virtual environment
 python -m venv venv
@@ -123,7 +123,7 @@ python app.py
 ### 2️⃣ Web Dashboard
 
 ```bash
-cd bankshield/
+cd SecureAPK/API_WEBAPP/
 python app.py
 ```
 
@@ -131,7 +131,7 @@ python app.py
 
 ```bash
 # Go to Flutter project
-cd bankshield/flutter_app
+cd SecureAPK/ANDROIDAPP/
 
 # Get dependencies
 flutter pub get
