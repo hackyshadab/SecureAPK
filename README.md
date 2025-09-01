@@ -172,10 +172,28 @@ flutter run
 
 
 ## ⚠️ Disclaimer
-BankShield is intended for educational and research purposes only.  
-Do not use this tool for analyzing apps without proper authorization.
 
+**SecureAPK** is a research and educational platform designed to **analyze APK files, including potentially malicious applications**, in a controlled environment.  
+This tool **may expose your system or network to security risks** if used improperly.  
+
+**Important Safety Guidelines for Users:**
+- Always use a **sandbox, virtual machine, or isolated environment** when analyzing unknown APKs.  
+- Do **not upload or analyze applications without proper authorization** from the app owner.  
+- Avoid running malware on production devices or networks.  
+- This tool is **for research, testing, and educational purposes only**.  
+
+By using SecureAPK, you agree that you are responsible for your actions and any consequences arising from improper usage.
+
+---
 
 ## 📜 License
 
-This project is licensed under the **MIT License** – feel free to use and modify.
+This project is licensed under the **MIT License**.  
+
+**Key points of the license:**
+- ✅ You are free to **use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies** of this software.  
+- ✅ Attribution is required: keep the original copyright notice and license in all copies or substantial portions of the software.  
+- ✅ There is **no warranty**: the software is provided "as-is", without any guarantees of safety, security, or suitability for any purpose.  
+
+**Summary:** You may use and adapt this tool for educational, research, or personal projects, but you **assume all responsibility** for any risks or damages associated with its use.
+
