@@ -145,6 +145,31 @@ flutter run
 - Flutter SDK **3.22+**
 - Android SDK **34+**
 - `INTERNET` permission in `AndroidManifest.xml`
+- 
+
+## 📸 Screenshots
+
+### Landing Page
+![Web Landing](API_WEBAPP/images/land.png)
+
+### Web Dashboard
+![Web Dashboard](API_WEBAPP/images/main.png)
+
+### Static Analysis
+![Static Analysis](API_WEBAPP/images/static.png)
+
+### ML Results & SHAP Visualization
+![ML Analysis](API_WEBAPP/images/ml.png)
+
+### Yara Rule
+![Yara Rule](API_WEBAPP/images/yara.png)
+
+### APK Upload & Analysis
+![APK Upload](API_WEBAPP/images/andromain.png)
+
+### Android App Static Analysis
+![Flutter App](API_WEBAPP/images/staticandro.png)
+
 
 ## ⚠️ Disclaimer
 BankShield is intended for educational and research purposes only.  
