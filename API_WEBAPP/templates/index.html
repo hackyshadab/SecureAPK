@@ -1,0 +1,1643 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SecureAPK — Dashboard (Upload & Analyze APK)</title>
+
+  <!-- Tailwind CDN (with inline config) -->
+  <script>
+    // Tailwind runtime config: custom colors & extended screens
+    tailwind = window.tailwind || {};
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bsblue: '#0ea5a4',
+            bsneon: '#7c3aed',
+            glass: 'rgba(255,255,255,0.06)',
+            card: '#0b1220',
+            accent: '#60a5fa'
+          },
+          boxShadow: {
+            'neon-lg': '0 10px 30px rgba(124,58,237,0.14), inset 0 1px 0 rgba(255,255,255,0.02)',
+            'glass': '0 6px 18px rgba(2,6,23,0.6)'
+          },
+          rotate: { '15': '15deg' }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Icons & Animations -->
+  <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.1/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.1/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- FileSaver for file downloads -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <style>
+    /* Minor global tweaks */
+    :root {
+      --bg: #071024;
+      --card-bg: rgba(10, 16, 28, 0.6);
+      --glass: rgba(255, 255, 255, 0.03)
+    }
+
+    .glass-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .neon-text {
+      text-shadow: 0 2px 12px rgba(124, 58, 237, 0.25);
+    }
+
+    .tilt-card {
+      transform-style: preserve-3d;
+      transition: transform 0.18s cubic-bezier(.2, .9, .2, 1);
+      will-change: transform;
+    }
+
+    .gauge-needle {
+      transform-origin: 50% 90%;
+      transition: transform 0.9s cubic-bezier(.22, .9, .28, 1);
+    }
+
+    .frost {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+      border-radius: 14px;
+    }
+
+    /* Responsive helper */
+    @media (max-width: 900px) {
+      .sidebar {
+        display: none
+      }
+    }
+  </style>
+</head>
+
+<body
+  class="min-h-screen antialiased text-slate-200 bg-gradient-to-br from-[#041021] via-[#071024] to-[#071c2a] selection:bg-bsblue selection:text-black"
+  data-theme="dark">
+
+  <!-- Root container -->
+  <div id="app" class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+      class="sidebar w-72 p-5 bg-gradient-to-b from-[#051025] to-[#081428] border-r border-slate-800 glass-card">
+      <div class="flex items-center gap-3 mb-6">
+        <div
+          class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-tr from-bsneon to-bsblue shadow-neon-lg">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="#fff" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div>
+          <div class="font-semibold text-lg">SecureAPK</div>
+          <div class="text-xs text-slate-400">Fake Banking APK Detector</div>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <nav class="mb-4">
+        <ul class="space-y-1">
+          <li><a href="#" data-tab="upload"
+              class="nav-item flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 active:bg-white/6"><i
+                class='bx bx-upload text-lg'></i><span>Upload & Analyze</span></a></li>
+          <li><a href="#" data-tab="overview"
+              class="nav-item flex items-center gap-3 p-3 rounded-lg hover:bg-white/5"><i
+                class='bx bx-grid-alt text-lg'></i><span>Overview</span></a></li>
+          <li><a href="#" data-tab="static" class="nav-item flex items-center gap-3 p-3 rounded-lg hover:bg-white/5"><i
+                class='bx bx-file text-lg'></i><span>Static</span></a></li>
+          <li><a href="#" data-tab="intelligence"
+              class="nav-item flex items-center gap-3 p-3 rounded-lg hover:bg-white/5"><i
+                class='bx bx-shield-quarter text-lg'></i><span>Intelligence</span></a></li>
+          <li><a href="#" data-tab="ml" class="nav-item flex items-center gap-3 p-3 rounded-lg hover:bg-white/5"><i
+                class='bx bx-brain text-lg'></i><span>ML</span></a></li>
+          <li><a href="#" data-tab="yara" class="nav-item flex items-center gap-3 p-3 rounded-lg hover:bg-white/5"><i
+                class='bx bx-code-alt text-lg'></i><span>YARA Rule</span></a></li>
+          <li><a href="#" data-tab="reanalyze"
+              class="nav-item flex items-center gap-3 p-3 rounded-lg hover:bg-white/5"><i
+                class='bx bx-repeat text-lg'></i><span>Analyze Again</span></a></li>
+        </ul>
+      </nav>
+
+      <!-- Utilities -->
+      <div class="mt-6 pt-4 border-t border-slate-800">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-xs text-slate-400">Theme</div>
+          <button id="themeToggle" class="px-2 py-1 rounded bg-white/5 text-sm">Toggle</button>
+        </div>
+        <div class="text-xs text-slate-400">Shortcuts</div>
+        <div class="mt-2 text-sm text-slate-300 space-y-1">
+          <div>⌘/Ctrl + U → Upload</div>
+          <div>⌘/Ctrl + J → Download JSON</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 p-6 overflow-auto">
+      <!-- Top bar -->
+      <header class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-4">
+          <div id="apiHealth"
+            class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-900/10 text-emerald-300 text-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> API: unknown
+          </div>
+          <div id="currentFile" class="text-sm text-slate-300">No APK uploaded</div>
+        </div>
+        <!-- <div class="flex items-center gap-3">
+          <button id="downloadJsonBtn"
+            class="btn-download px-3 py-2 rounded-md bg-[#122033] hover:bg-[#14323f]">Download JSON</button>
+          <button id="downloadCsvBtn" class="px-3 py-2 rounded-md bg-[#122033] hover:bg-[#14323f]">Download CSV</button>
+          <button id="downloadPdfBtn" class="px-3 py-2 rounded-md bg-[#7c3aed] hover:bg-[#6b29d0]">Download PDF</button>
+        </div> -->
+      </header>
+
+      <!-- Upload view -->
+      <section id="uploadView" class="upload-view grid grid-cols-12 gap-6">
+        <div class="col-span-12 lg:col-span-6">
+          <div id="dropArea"
+            class="relative cursor-pointer rounded-2xl p-8 frost border border-slate-700 h-96 flex flex-col items-center justify-center text-center tilt-card glass-card">
+            <div id="threeCanvas" class="absolute inset-0 -z-10 rounded-2xl overflow-hidden"></div>
+            <div
+              class="w-36 h-36 rounded-full bg-gradient-to-br from-[#0ea5a4]/30 to-[#7c3aed]/20 flex items-center justify-center mb-4 shadow-glass">
+              <i class='bx bx-cloud-upload text-4xl text-slate-100'></i>
+            </div>
+            <h2 class="text-2xl font-semibold neon-text">Drag & Drop APK</h2>
+            <p class="text-slate-400 mt-2">or click to browse. We analyze offline (mock VT available).</p>
+            <input id="fileInput" type="file" accept=".apk" class="absolute inset-0 opacity-0 cursor-pointer" />
+            <div class="absolute bottom-6 left-6 text-xs text-slate-500">Max 50 MB • .apk only</div>
+
+            <!-- Progress block -->
+            <div id="progressBlock" class="absolute inset-0 hidden items-center justify-center bg-black/40 rounded-2xl">
+              <div class="w-80 p-5 bg-[#071428]/70 rounded-lg text-center">
+                <div id="progressBarOuter" class="w-full h-3 bg-slate-800 rounded-full overflow-hidden mb-3">
+                  <div id="progressBar" class="h-3 w-0 bg-gradient-to-r from-bsneon to-bsblue"></div>
+                </div>
+                <div id="progressText" class="text-sm text-slate-200">Preparing analysis…</div>
+                <div class="mt-4 loader-3d mx-auto w-16 h-16" id="loader3d">
+                  <!-- 3D spinner using CSS/GSAP -->
+                  <div class="w-16 h-16 rounded-full border-2 border-white/8 border-t-4 border-t-bsneon animate-spin">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Session log -->
+          <div class="mt-6 glass-card p-4 rounded-xl">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-sm text-slate-300 font-medium">Session Log</div>
+              <button id="clearLog" class="text-xs px-2 py-1 rounded bg-white/3">Clear</button>
+            </div>
+            <div id="sessionList" class="max-h-56 overflow-auto space-y-2 text-sm text-slate-300"></div>
+          </div>
+        </div>
+
+        <!-- Upload details & quick info -->
+        <div class="col-span-12 lg:col-span-6 space-y-4">
+          <div class="glass-card p-5 rounded-2xl">
+            <div class="flex items-start gap-4">
+              <div class="w-14 h-14 rounded-lg bg-slate-800 flex items-center justify-center">
+                <i class='bx bx-shield-quarter text-2xl text-slate-200'></i>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-semibold">Upload & Analyze</h3>
+                <p class="text-slate-400 text-sm">Drop an APK here to begin full static analysis, ML scoring and
+                  intelligence enrichment. The dashboard will guide you through findings with easy actions.</p>
+                <div class="mt-3 flex gap-2">
+                  <button id="startAnalyzeBtn" class="px-4 py-2 rounded bg-bsneon hover:scale-[1.02]">Analyze</button>
+                  <button id="openLastBtn" class="px-4 py-2 rounded bg-white/5">Open Last</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick KPI preview while idle -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="p-4 rounded-xl frosted glass-card tilt-card">
+              <div class="text-xs text-slate-400">Final Risk</div>
+              <div id="kpiRisk" class="text-2xl font-bold neon-text">—%</div>
+            </div>
+            <div class="p-4 rounded-xl frosted glass-card tilt-card">
+              <div class="text-xs text-slate-400">VirusTotal</div>
+              <div id="kpiVT" class="text-2xl font-bold">— / —</div>
+            </div>
+            <div class="p-4 rounded-xl frosted glass-card tilt-card">
+              <div class="text-xs text-slate-400">MalwareBazaar</div>
+              <div id="kpiMB" class="text-2xl font-bold">—</div>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl glass-card">
+            <div class="text-xs text-slate-400">Notes</div>
+            <div class="mt-2 text-sm text-slate-300">Use the left navigation to explore results. YARA rules are
+              auto-generated and available for quick IOC blocking. Use keyboard shortcuts for fast actions.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Results Dashboard -->
+      <!-- Results Dashboard -->
+      <section id="dashboard" class="hidden mt-6 space-y-6">
+        <!-- Tabs header -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-semibold">Analysis Result</h1>
+            <div id="fileMeta" class="text-sm text-slate-400"></div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="goUpload" class="px-3 py-1 rounded bg-white/5 hover:bg-white/10 transition">Upload New</button>
+          </div>
+        </div>
+
+        <!-- Tab content grid -->
+        <div class="grid grid-cols-12 gap-6">
+          <!-- Left column -->
+          <div class="col-span-12 lg:col-span-8 space-y-4">
+
+        
+
+            <!-- Overview card (Risk Meter + Score) -->
+            <div id="overviewTab" class="tab-pane bg-[#061223] p-6 rounded-2xl glass-card shadow-md space-y-6">
+              <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <!-- Risk Meter -->
+                <div>
+                  <div class="text-sm text-slate-400">Risk Meter</div>
+                  <div class="flex items-center gap-4 mt-2">
+                    <div class="w-56 h-36 relative">
+                      <!-- Gauge SVG -->
+                      <svg viewBox="0 0 200 120" class="w-full h-full">
+                        <defs>
+                          <linearGradient id="g1" x1="0" x2="1">
+                            <stop offset="0" stop-color="#7c3aed" />
+                            <stop offset="1" stop-color="#0ea5a4" />
+                          </linearGradient>
+                        </defs>
+                        <path d="M20 100 A80 80 0 0 1 180 100" stroke="rgba(255,255,255,0.06)" stroke-width="12"
+                          fill="none" stroke-linecap="round" />
+                        <path id="gaugeArc" d="M20 100 A80 80 0 0 1 180 100" stroke="url(#g1)" stroke-width="12"
+                          fill="none" stroke-linecap="round" stroke-dasharray="0 500" />
+                        <g id="needleGroup" transform="translate(100,100)">
+                          <line x1="0" y1="0" x2="0" y2="-70" class="gauge-needle" id="gaugeNeedle" stroke="#fff"
+                            stroke-width="3" stroke-linecap="round" transform-origin="50% 100%" />
+                          <circle r="6" fill="#111827" stroke="#fff" stroke-width="2" />
+                        </g>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Score + Buttons -->
+                <div>
+                  <div class="text-xs text-slate-400">Final Risk Score</div>
+                  <div id="finalScore" class="text-4xl font-bold neon-text">—%</div>
+                  <div id="finalDecision" class="mt-1 text-sm text-slate-300">—</div>
+                  <div class="mt-3 flex gap-2">
+                    <button id="gotoMlTab" class="px-3 py-2 rounded bg-[#0ea5a4] hover:bg-[#089288] transition">
+                      View ML
+                    </button>
+                    <button id="gotoStaticTab" class="px-3 py-2 rounded bg-white/5 hover:bg-white/10 transition">
+                      View Static
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- VirusTotal + IOCs charts -->
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="p-4 rounded-xl bg-[#071827] glass-card shadow">
+                  <div class="flex items-center justify-between text-sm text-slate-400">
+                    <div>VirusTotal</div>
+                    <div id="vtMini">—</div>
+                  </div>
+                  <div id="vtBar" class="h-32 mt-2">
+                    <canvas id="vtBarCtx"></canvas>
+                  </div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-[#071827] glass-card shadow">
+                  <div class="flex items-center justify-between text-sm text-slate-400">
+                    <div>IOCs</div>
+                    <div id="iocCount">—</div>
+                  </div>
+                  <canvas id="iocChart" height="80"></canvas>
+                </div>
+              </div>
+            </div>
+          
+
+
+
+
+            
+            
+<!-- Static tab -->
+<div id="staticTab" class="tab-pane hidden p-5 rounded-2xl bg-[#061223] glass-card">
+  <div class="flex items-start gap-6">
+    
+    <!-- Left Column -->
+    <div class="flex-1 min-w-0">
+      <h3 class="font-semibold text-lg text-white">Static Analysis</h3>
+      <p class="text-sm text-slate-400">
+        All static fields returned by the backend are shown here. Expand lists with Show More.
+      </p>
+
+      <div class="mt-4 space-y-5">
+
+        <!-- 🔴 Dangerous Permissions -->
+        <div class="p-4 rounded-xl border border-red-500/40 bg-[#1a0f13] shadow-md">
+          <div class="text-xs font-semibold text-red-400 uppercase tracking-wide">
+            🚨 Dangerous Permissions
+          </div>
+          <div id="dangerPerms" 
+               class="mt-2 text-sm text-red-300 max-h-32 overflow-y-auto whitespace-pre-wrap break-words transition-all duration-300"></div>
+          <button id="toggleDanger" class="mt-2 text-xs text-red-400 hover:underline">Show more</button>
+        </div>
+
+        <!-- 🟦 Permissions -->
+        <div class="p-4 rounded-xl border border-slate-700/50 bg-[#0b1a2c] shadow-md">
+          <div class="text-xs text-slate-400 uppercase tracking-wide">Permissions</div>
+          <div id="permList" 
+               class="mt-2 text-sm text-slate-200 max-h-40 overflow-y-auto whitespace-pre-wrap break-words"></div>
+          <button id="togglePerms" class="mt-2 text-xs text-sky-400 hover:underline">Show more</button>
+        </div>
+
+        <!-- Signature & Certificates -->
+        <div class="p-4 rounded-xl border border-slate-700/50 bg-[#0b1a2c] shadow-md">
+          <div class="flex items-center justify-between">
+            <div class="text-xs text-slate-400 uppercase tracking-wide">Signature & Certificates</div>
+            <div class="text-xs text-slate-300" id="certTrust">—</div>
+          </div>
+          <div class="mt-2 text-sm text-slate-200 break-all" id="certFingerprint">—</div>
+        </div>
+
+       
+        
+
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="w-80 shrink-0 space-y-5">
+
+      <!-- Icon Similarity -->
+      <div class="p-4 rounded-xl border border-slate-700/50 bg-[#0b1a2c] shadow-md">
+        <div class="text-xs text-slate-400 uppercase tracking-wide">Icon Similarity</div>
+        <div class="mt-2">
+          <div id="iconPreview" class="w-32 h-32 bg-slate-700 flex items-center justify-center rounded-lg text-slate-400">—</div>
+          <div class="mt-2 text-sm text-slate-200" id="iconSimScore">—</div>
+        </div>
+      </div>
+
+      <!-- Hashes -->
+      <div class="p-4 rounded-xl border border-slate-700/50 bg-[#0b1a2c] shadow-md">
+        <div class="text-xs text-slate-400 uppercase tracking-wide">Hashes</div>
+        <div class="mt-2 text-sm text-slate-200 break-all" id="hashesBlock">—</div>
+      </div>
+
+       <!-- Entropy -->
+        <div class="p-4 rounded-xl border border-slate-700/50 bg-[#0b1a2c] shadow-md">
+          <div class="text-xs text-slate-400 uppercase tracking-wide">Entropy (classes.dex)</div>
+          <div id="entropyVal" class="text-lg font-semibold mt-2 text-emerald-400">—</div>
+        </div>
+
+      <!-- Suspicious Strings & IOCs -->
+        <div class="p-4 rounded-xl border border-slate-700/50 bg-[#0b1a2c] shadow-md">
+          <div class="text-xs text-slate-400 uppercase tracking-wide">Suspicious Strings & IOCs</div>
+          <div class="mt-2 space-y-3 text-sm">
+            <div>
+              <div class="font-medium text-sky-400 text-xs">Suspicious IOCs</div>
+
+              <!-- Summary (collapsed view) -->
+              <div id="suspiciousList1" class="mt-1 text-slate-200 text-xs"></div>
+
+              <!-- Expanded view -->
+              <div id="suspiciousExpanded" 
+                   class="mt-2 text-xs text-slate-200 whitespace-pre-wrap break-words 
+                          max-h-0 overflow-hidden transition-all duration-500 ease-in-out
+                          scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800 rounded-md">
+              </div>
+            </div>
+          </div>
+          <button id="toggleIocs1" class="mt-3 text-xs text-sky-400 hover:underline">Show more</button>
+        </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+            <!-- Intelligence tab -->
+            <div id="intelTab" class="tab-pane hidden p-5 rounded-2xl bg-[#061223] glass-card">
+              <h3 class="font-semibold">Threat Intelligence</h3>
+              <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="p-4 rounded-lg bg-[#071827]">
+                  <div class="text-xs text-slate-400">VirusTotal</div>
+                  <div class="mt-2 text-sm" id="vtRaw">—</div>
+                </div>
+                <div class="p-4 rounded-lg bg-[#071827]">
+                  <div class="text-xs text-slate-400">MalwareBazaar</div>
+                  <div class="mt-2 text-sm" id="mbRaw">—</div>
+                </div>
+              </div>
+
+              <div class="mt-4 p-4 rounded-lg bg-[#071827]">
+                <div class="text-xs text-slate-400">Indicators</div>
+                <div id="indicators" class="mt-2 text-sm grid grid-cols-2 gap-3"></div>
+              </div>
+            </div>
+
+           
+<!-- ML tab -->
+<div id="mlTab" class="tab-pane hidden p-5 rounded-2xl bg-[#061223] glass-card">
+  <h3 class="font-semibold">ML Analysis</h3>
+  <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    
+    <!-- Donut Gauge -->
+    <div class="p-4 rounded-lg bg-[#071827] flex flex-col items-center">
+      <canvas id="mlDonut" width="220" height="220"></canvas>
+      <div class="mt-3 text-sm text-slate-300" id="mlProbText">—</div>
+    </div>
+
+    <!-- SHAP Bars -->
+    <div class="p-4 rounded-lg bg-[#071827]">
+      <div class="text-xs text-slate-400">Feature Importance (SHAP-like)</div>
+      <canvas id="shapBars" height="220"></canvas>
+      <div class="mt-3">
+        <span id="mlDecision"
+          class="px-3 py-1 rounded-full text-xs font-medium bg-slate-600/20 text-slate-300">
+          —
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Explanations -->
+  <div class="mt-4 p-4 rounded-lg bg-[#071827]">
+    <div class="text-sm">Explanations</div>
+    <ul id="explanations"
+      class="list-disc ml-4 mt-2 text-sm text-slate-300 space-y-1"></ul>
+  </div>
+</div>
+
+
+
+
+           <!-- YARA Tab -->
+<div id="yaraTab" class="tab-pane hidden p-6 rounded-2xl bg-gradient-to-br from-[#081421] to-[#0a1d2e] border border-white/5 shadow-lg">
+  <div class="flex items-center gap-3 mb-3">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m2 0a8 8 0 11-16 0 8 8 0 0116 0z" />
+    </svg>
+    <h3 class="text-lg font-semibold text-slate-100">Generated YARA Rule</h3>
+  </div>
+  <p class="text-sm text-slate-400 mb-3">Based on static features. Review & modify before deployment.</p>
+  
+  <textarea id="yaraOutput" rows="10"
+    class="mt-2 w-full p-4 bg-[#05131b]/80 border border-slate-700/40 rounded-xl text-sm text-cyan-100 font-mono resize-none focus:ring-2 focus:ring-cyan-500 focus:outline-none shadow-inner"></textarea>
+  
+  <div class="flex items-center justify-between mt-3">
+    <span id="yaraInfo" class="text-xs text-slate-500 italic">No rule generated yet</span>
+    <div class="flex gap-3">
+      <button id="downloadYara"
+        class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-cyan-600 hover:bg-cyan-500 active:scale-95 transition shadow">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+        </svg>
+        Download .yar
+      </button>
+      <button id="copyYara"
+        class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition border border-slate-700/50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8m-6 8h6a2 2 0 002-2V6a2 2 0 00-2-2h-6a2 2 0 00-2 2v16z" />
+        </svg>
+        Copy
+      </button>
+    </div>
+  </div>
+</div>
+
+          </div>
+
+          <!-- right column (side widgets) -->
+          <div class="col-span-12 lg:col-span-4 space-y-4">
+            <!-- Summary -->
+            <div class="p-5 rounded-2xl bg-[#071827] glass-card shadow-md">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-slate-400">Summary</div>
+                  <div id="summaryText" class="text-lg font-semibold mt-2">No analysis yet</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs text-slate-400">Confidence</div>
+                  <div id="confBadge" class="text-sm font-semibold text-slate-200">—</div>
+                </div>
+              </div>
+              <div class="mt-4 grid grid-cols-2 gap-3">
+                <div class="p-3 rounded-xl bg-[#0b1624] text-sm shadow-inner">
+                  <div class="text-xs text-slate-400">Permissions</div>
+                  <div id="countPerms" class="text-lg font-medium">—</div>
+                </div>
+                <div class="p-3 rounded-xl bg-[#0b1624] text-sm shadow-inner">
+                  <div class="text-xs text-slate-400">Suspicious IO</div>
+                  <div id="countIocs" class="text-lg font-medium">—</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="p-5 rounded-2xl bg-[#071827] glass-card shadow-md">
+  <div class="flex items-center justify-between">
+    <div class="text-sm text-slate-400">Actions</div>
+    <div class="text-xs text-slate-400">Export</div>
+  </div>
+
+  <div class="mt-3 flex gap-2">
+    <button id="downloadJsonBtn" class="px-3 py-2 rounded-md bg-[#122033] hover:bg-[#14323f] transition w-full">
+      JSON
+    </button>
+    <button id="downloadCsvBtn" class="px-3 py-2 rounded-md bg-[#122033] hover:bg-[#14323f] transition w-full">
+      CSV
+    </button>
+  </div>
+
+  <div class="mt-3 text-xs text-slate-400">Report</div>
+  <button id="downloadPdfBtn" class="mt-2 px-3 py-2 rounded-md bg-[#7c3aed] hover:bg-[#6b29d0] transition w-full">
+    Export PDF
+  </button>
+</div>
+
+
+            <!-- History -->
+            <div class="p-5 rounded-2xl bg-[#071827] glass-card shadow-md">
+              <div class="text-sm text-slate-400">History</div>
+              <div id="historyBlock" class="mt-2 text-sm max-h-48 overflow-auto"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Template helpers -->
+  <template id="sessionItemTemplate">
+    <div class="flex items-center justify-between p-2 rounded hover:bg-white/2">
+      <div class="text-sm">
+        <div class="font-medium name"></div>
+        <div class="text-xs text-slate-400 time"></div>
+      </div>
+      <div>
+        <button class="reload text-xs px-2 py-1 rounded bg-white/6">Open</button>
+      </div>
+    </div>
+  </template>
+  <script>
+      /**
+       * SecureAPK — unified client script
+       * - Merges both previous scripts
+       * - Works with either set of element IDs (prefers the "v1" IDs, falls back to the simpler ones)
+       * - Safer Chart.js usage (destroys old charts, null-guards contexts)
+       * - Better risk meter mapping (model.final_score || risk_score || probability_fake)
+       * - VirusTotal BAR chart from raw VT stats (or your {malicious,suspicious,undetected} shape)
+       * - IOC chart supports both shapes: {url_count, ip_count, keyword_hits} and {ips,domains,urls,hashes}
+       * - YARA rule from suspicious strings, URLs/IPs fragments, and permissions
+       * - Session history, exports (JSON/CSV/PDF/YARA), health ping
+       */
+      (() => {
+        // ----------------------- Utilities -----------------------
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+        const humanTime = (d = new Date()) => d.toLocaleString();
+
+        // Safe getters
+        const byId = (id) => document.getElementById(id) || null;
+        const ctxOf = (id) => {
+          const c = byId(id);
+          return c && c.getContext ? c.getContext('2d') : null;
+        };
+        const safeText = (el, v) => { if (el) el.textContent = v; };
+        const setHTML = (el, v) => { if (el) el.innerHTML = v; };
+
+        // File helpers
+        window.saveAs = window.saveAs || ((blob, filename) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = filename; a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+
+        // ----------------------- Element map (supports both versions) -----------------------
+        const els = {
+          // upload areas
+          dropArea: byId('dropArea') || byId('uploadArea'),
+          fileInput: byId('fileInput'),
+
+          // progress UI (v1) or minimal (v2)
+          progressBlock: byId('progressBlock'),
+          progressBar: byId('progressBar'),
+          progressText: byId('progressText'),
+
+          // views & tabs
+          uploadView: byId('uploadView'),
+          dashboard: byId('dashboard'),
+          navItems: $$('.nav-item'),
+
+          // status
+          apiHealth: byId('apiHealth'),
+
+          // session/history
+          sessionList: byId('sessionList'),
+          sessionTpl: byId('sessionItemTemplate'),
+          sessionLog: byId('sessionLog'),
+          clearLog: byId('clearLog'),
+
+          // headline/meta
+          currentFile: byId('currentFile'),
+          fileMeta: byId('fileMeta'),
+
+          // KPIs
+          finalScoreEl: byId('finalScore'),
+          finalDecisionEl: byId('finalDecision'),
+          kpiRisk: byId('kpiRisk'),
+          kpiVT: byId('kpiVT'),
+          kpiMB: byId('kpiMB'),
+
+          // ML / explanations
+          mlProbText: byId('mlProbText'),
+          shapBarsCtx: ctxOf('shapBars') || ctxOf('shapChart'),
+          mlDonutCtx: ctxOf('mlDonut') || ctxOf('mlChart'),
+
+          // charts
+          iocChartCtx: ctxOf('iocChart'),
+          vtBarCtx: ctxOf('vtBar') || ctxOf('vtChart'),
+
+          vtMini: document.getElementById("vtMini"),
+          vtBarCtx: document.getElementById("vtBarCtx"),
+
+
+          // lists & details
+          explanationsList: byId('explanations'),
+          permList: byId('permList'),
+          dangerPerms: byId('dangerPerms'),
+          suspiciousList: byId('suspiciousList'),
+          suspiciousList1: byId('suspiciousList1'),
+          entropyVal: byId('entropyVal'),
+          certFingerprint: byId('certFingerprint'),
+          certTrustEl: byId('certTrust'),
+          iconSimScore: byId('iconSimScore'),
+          hashesBlock: byId('hashesBlock'),
+          indicators: byId('indicators'),
+          vtRaw: byId('vtRaw'),
+          mbRaw: byId('mbRaw'),
+          summaryText: byId('summaryText'),
+          confBadge: byId('confBadge'),
+          countPerms: byId('countPerms'),
+          countIocs: byId('countIocs'),
+
+          // gauge
+          gaugeNeedle: byId('gaugeNeedle') || byId('needle'),
+          gaugeArc: byId('gaugeArc'),
+
+          // buttons
+          startAnalyzeBtn: byId('startAnalyzeBtn'),
+          goUploadBtn: byId('goUpload'),
+          openLastBtn: byId('openLastBtn'),
+          themeToggle: byId('themeToggle'),
+          gotoMlTab: byId('gotoMlTab'),
+          gotoStaticTab: byId('gotoStaticTab'),
+
+          // export v1
+          downloadJsonBtn: byId('downloadJsonBtn') || byId('expJSON'),
+          downloadCsvBtn: byId('downloadCsvBtn') || byId('expCSV'),
+          downloadPdfBtn: byId('downloadPdfBtn') || byId('expPDF'),
+          // export v2 fallback ids
+          exportJson: byId('exportJson'),
+          exportCsv: byId('exportCsv'),
+          exportPdf: byId('exportPdf'),
+          exportYara: byId('exportYara'),
+
+          // YARA
+          yaraOutput: byId('yaraOutput'),
+          downloadYara: byId('downloadYara'),
+          copyYara: byId('copyYara'),
+
+          // toggles
+          togglePerms: byId('togglePerms'),
+          toggleIocs: byId('toggleIocs'),
+          toggleIocs1: byId('toggleIocs1'),
+
+          // misc blocks
+          historyBlock: byId('historyBlock'),
+        };
+
+        // Optional tab map (only if your HTML has these)
+        const tabMap = {
+          upload: byId('uploadView'),
+          overview: byId('overviewTab'),
+          static: byId('staticTab'),
+          intelligence: byId('intelTab'),
+          ml: byId('mlTab'),
+          yara: byId('yaraTab'),
+          reanalyze: byId('uploadView'),
+        };
+
+        // ----------------------- Theme -----------------------
+        const dt = document.documentElement;
+        function applyTheme(t) {
+          if (t === 'light') dt.classList.remove('dark'), localStorage.setItem('bs_theme', 'light');
+          else dt.classList.add('dark'), localStorage.setItem('bs_theme', 'dark');
+        }
+        applyTheme(localStorage.getItem('bs_theme') || 'dark');
+        if (els.themeToggle) {
+          els.themeToggle.addEventListener('click', () =>
+            applyTheme(localStorage.getItem('bs_theme') === 'dark' ? 'light' : 'dark')
+          );
+        }
+
+        // ----------------------- 3D bg (optional) -----------------------
+        (function threeBg() {
+          try {
+            const container = byId('threeCanvas');
+            if (!container || !window.THREE) return;
+            const w = container.clientWidth, h = container.clientHeight;
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(w, h);
+            container.appendChild(renderer.domElement);
+            const geom = new THREE.IcosahedronGeometry(8, 1);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x7c3aed, wireframe: true, opacity: 0.06, transparent: true });
+            const mesh = new THREE.Mesh(geom, mat); scene.add(mesh);
+            camera.position.z = 25;
+            const animate = () => { mesh.rotation.x += 0.002; mesh.rotation.y += 0.004; renderer.render(scene, camera); requestAnimationFrame(animate); };
+            animate();
+            window.addEventListener('resize', () => {
+              renderer.setSize(container.clientWidth, container.clientHeight);
+              camera.aspect = container.clientWidth / container.clientHeight;
+              camera.updateProjectionMatrix();
+            });
+          } catch (_) { /* noop */ }
+        })();
+
+        // tilt effect
+        $$('.tilt-card').forEach(el => {
+          el.addEventListener('mousemove', (ev) => {
+            const r = el.getBoundingClientRect();
+            const px = (ev.clientX - r.left) / r.width;
+            const py = (ev.clientY - r.top) / r.height;
+            const rx = (py - 0.5) * -8;
+            const ry = (px - 0.5) * 12;
+            el.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+          });
+          el.addEventListener('mouseleave', () => { el.style.transform = 'none'; });
+        });
+
+        // ----------------------- Tabs (if present) -----------------------
+        function switchTab(name) {
+          if (!els.navItems.length) return;
+          els.navItems.forEach(n => n.classList.remove('active', 'bg-white/6'));
+          els.navItems.forEach(n => { if (n.dataset.tab === name) n.classList.add('active'); });
+
+          $$('.tab-pane').forEach(t => t.classList.add('hidden'));
+          if (name === 'upload') {
+            els.uploadView && els.uploadView.classList.remove('hidden');
+            els.dashboard && els.dashboard.classList.add('hidden');
+          } else {
+            els.uploadView && els.uploadView.classList.add('hidden');
+            els.dashboard && els.dashboard.classList.remove('hidden');
+            if (tabMap[name]) tabMap[name].classList.remove('hidden');
+          }
+        }
+        els.navItems.forEach(a => a.addEventListener('click', (e) => { e.preventDefault(); switchTab(a.dataset.tab); }));
+        switchTab('upload'); // initial
+
+        // keyboard
+        window.addEventListener('keydown', (e) => {
+          const mod = e.ctrlKey || e.metaKey;
+          if (mod && e.key.toLowerCase() === 'u') { e.preventDefault(); switchTab('upload'); }
+          if (mod && e.key.toLowerCase() === 'j') { e.preventDefault(); downloadJSON(); }
+        });
+
+        // ----------------------- Sessions -----------------------
+        let lastAnalysis = null;
+        const sessions = JSON.parse(localStorage.getItem('bs_sessions') || '[]');
+        function saveSession(s) {
+          sessions.unshift(s);
+          if (sessions.length > 30) sessions.pop();
+          localStorage.setItem('bs_sessions', JSON.stringify(sessions));
+          renderSessions();
+        }
+        function renderSessions() {
+          if (els.sessionList && els.sessionTpl) {
+            els.sessionList.innerHTML = '';
+            sessions.forEach((s) => {
+              const item = els.sessionTpl.content.cloneNode(true);
+              item.querySelector('.name').textContent = s.name;
+              item.querySelector('.time').textContent = s.time;
+              item.querySelector('.reload').addEventListener('click', () => loadAnalysisFromSession(s));
+              els.sessionList.appendChild(item);
+            });
+          }
+          if (els.sessionLog) {
+            els.sessionLog.innerHTML = '';
+            sessions.forEach((s) => {
+              const div = document.createElement('div');
+              div.className = 'p-2 hover:bg-gray-700 rounded cursor-pointer';
+              div.textContent = `${s.name} (${s.time})`;
+              div.onclick = () => loadAnalysisFromSession(s);
+              els.sessionLog.appendChild(div);
+            });
+          }
+        }
+        function loadAnalysisFromSession(s) {
+          lastAnalysis = s.data;
+          populateDashboard(s.data);
+          switchTab('overview');
+        }
+        renderSessions();
+        if (els.clearLog) els.clearLog.addEventListener('click', () => {
+          localStorage.removeItem('bs_sessions'); sessions.length = 0; renderSessions();
+        });
+
+        // ----------------------- Upload / Analyze -----------------------
+        function setProgress(p, text) {
+          if (els.progressBar) els.progressBar.style.width = `${Math.max(0, Math.min(100, p))}%`;
+          if (text && els.progressText) els.progressText.textContent = text;
+        }
+
+        async function startAnalysis() {
+          const file = els.fileInput && els.fileInput.files && els.fileInput.files[0];
+          if (!file) { alert('Please select an APK file to analyze.'); return; }
+          if (!file.name.endsWith('.apk')) { alert('Only .apk files allowed'); return; }
+          if (file.size > 50 * 1024 * 1024) { alert('File too large (50 MB limit)'); return; }
+
+          els.progressBlock && els.progressBlock.classList.remove('hidden');
+          setProgress(5, 'Uploading...');
+
+          const fd = new FormData();
+          fd.append('file', file);
+
+          try {
+            let fake = 5;
+            const tick = setInterval(() => { fake = Math.min(85, fake + Math.random() * 8); setProgress(fake, 'Uploading...'); }, 250);
+            const resp = await fetch('/analyze', { method: 'POST', body: fd });
+            clearInterval(tick);
+            setProgress(90, 'Processing on server...');
+            await new Promise(r => setTimeout(r, 300));
+
+            if (!resp.ok) {
+              const err = await resp.json().catch(() => ({ error: 'Server error' }));
+              throw new Error(err.error || 'Server responded with error');
+            }
+            const data = await resp.json();
+            setProgress(100, 'Done');
+            await new Promise(r => setTimeout(r, 200));
+            els.progressBlock && els.progressBlock.classList.add('hidden');
+            setProgress(0, '');
+
+            lastAnalysis = data;
+            saveSession({ name: file.name, time: humanTime(), data });
+            safeText(els.currentFile, file.name);
+            populateDashboard(data);
+            switchTab('overview');
+          } catch (err) {
+            els.progressBlock && els.progressBlock.classList.add('hidden');
+            setProgress(0, '');
+            console.error(err);
+            alert('Analysis failed: ' + (err.message || err));
+          }
+        }
+
+        // // Bind drag & drop (supports both IDs)
+        if (els.dropArea) {
+          ['dragenter', 'dragover'].forEach(evt => {
+            els.dropArea.addEventListener(evt, (e) => { e.preventDefault(); els.dropArea.classList.add('ring-2', 'ring-white/6', 'bg-gray-700'); });
+          });
+          ['dragleave', 'drop'].forEach(evt => {
+            els.dropArea.addEventListener(evt, (e) => { els.dropArea.classList.remove('ring-2', 'ring-white/6', 'bg-gray-700'); });
+          });
+          // els.dropArea.addEventListener('click', () => els.fileInput && els.fileInput.click());
+          els.dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const f = e.dataTransfer.files[0];
+            if (f && els.fileInput) els.fileInput.files = e.dataTransfer.files;
+            startAnalysis();
+          });
+        }
+        if (els.fileInput) els.fileInput.addEventListener('change', startAnalysis);
+        if (els.startAnalyzeBtn) els.startAnalyzeBtn.addEventListener('click', startAnalysis);
+        if (els.goUploadBtn) els.goUploadBtn.addEventListener('click', () => switchTab('upload'));
+
+
+
+
+        // ----------------------- Charts & renderers -----------------------
+        let iocChart = null, shapChart = null, donutChart = null, vtBarChart = null;
+
+        function destroyChart(c) { try { c && c.destroy && c.destroy(); } catch (_) { } }
+
+        function renderIocChartFrom(resp) {
+          if (!window.Chart || !els.iocChartCtx) return;
+          // Support both shapes:
+          // v1: analysis.suspicious.{url_count, ip_count, keyword_hits}
+          // v2: iocs.{ips, domains, urls, hashes}
+          const s = resp.analysis?.suspicious || {};
+          const i2 = resp.iocs || {};
+          let labels, data;
+          if (i2 && (i2.ips !== undefined || i2.domains !== undefined)) {
+            labels = ['IPs', 'Domains', 'URLs', 'Hashes'];
+            data = [i2.ips || 0, i2.domains || 0, i2.urls || 0, i2.hashes || 0];
+          } else {
+            labels = ['URLs', 'IPs', 'Keywords'];
+            data = [s.url_count || 0, s.ip_count || 0, s.keyword_hits || 0];
+          }
+          destroyChart(iocChart);
+          iocChart = new Chart(els.iocChartCtx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'IOC counts', data }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+          });
+        }
+
+
+        let mlTimelineChart = null;
+
+// Enhanced Donut
+function renderMlDonut(fakePct, safePct) {
+  if (!window.Chart || !els.mlDonutCtx) return;
+  destroyChart(donutChart);
+
+  donutChart = new Chart(els.mlDonutCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Malicious', 'Benign'],
+      datasets: [{
+        data: [fakePct, safePct],
+        backgroundColor: ['#ef4444', '#22c55e']
+      }]
+    },
+    options: {
+      cutout: '70%',
+      responsive: true,
+      animation: { animateRotate: true, duration: 1200, easing: 'easeOutBounce' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.label}: ${ctx.parsed}%`
+          }
+        }
+      }
+    }
+  });
+
+  safeText(els.mlProbText, `ML probability: ${fakePct}%`);
+}
+
+
+
+
+        function destroyChart(chart) {
+          if (chart) {
+            chart.destroy();
+            chart = null;
+          }
+        }
+
+        function renderVTBar(resp) {
+          if (!window.Chart || !els.vtBarCtx) return;
+
+          let stats = resp.analysis?.vt?.raw?.data?.attributes?.last_analysis_stats || null;
+          let simple = resp.virustotal || resp.analysis?.vt || null;
+
+          let l = ["Malicious", "Suspicious", "Undetected", "Harmless", "Timeout", "Failure"];
+          let d = [0, 0, 0, 0, 0, 0];
+
+          if (stats) {
+            d[0] = stats.malicious || 0;
+            d[1] = stats.suspicious || 0;
+            d[2] = stats.undetected || 0;
+            d[3] = stats.harmless || 0;
+            d[4] = stats.timeout || 0;
+            d[5] = stats.failure || 0;
+          } else if (simple) {
+            d[0] = simple.malicious ?? simple.detections ?? 0;
+            d[1] = simple.suspicious ?? 0;
+            d[2] = simple.undetected ?? ((simple.total !== undefined && simple.detections !== undefined) ? (simple.total - simple.detections) : 0);
+          } else {
+            return;
+          }
+
+          // detections summary (e.g. 12/70)
+          let total = d.reduce((a, b) => a + b, 0);
+          let det = d[0] + d[1];
+          els.vtMini.textContent = `${det}/${total}`;
+
+          destroyChart(vtBarChart);
+          vtBarChart = new Chart(els.vtBarCtx, {
+            type: "bar",
+            data: {
+              labels: l,
+              datasets: [{
+                data: d,
+                backgroundColor: [
+                  "#ef4444", // Malicious - red
+                  "#f97316", // Suspicious - orange
+                  "#94a3b8", // Undetected - gray
+                  "#22c55e", // Harmless - green
+                  "#eab308", // Timeout - yellow
+                  "#6b7280"  // Failure - dark gray
+                ]
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true } }
+            }
+          });
+        }
+
+        // function renderMlDonut(fakePct, safePct) {
+        //   if (!window.Chart || !els.mlDonutCtx) return;
+        //   destroyChart(donutChart);
+        //   donutChart = new Chart(els.mlDonutCtx, {
+        //     type: 'doughnut',
+        //     data: {
+        //       labels: ['Malicious', 'Benign'],
+        //       datasets: [{ data: [fakePct, safePct] }]
+        //     },
+        //     options: { cutout: '70%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed}%` } } } }
+        //   });
+        //   safeText(els.mlProbText, `ML probability: ${fakePct}%`);
+        // }
+
+        // function renderShapBars(resp) {
+        //   if (!window.Chart || !els.shapBarsCtx) return;
+        //   // v2 direct shap object
+        //   const direct = resp.shap && typeof resp.shap === 'object' ? resp.shap : null;
+
+        //   // v1 build from explanations
+        //   const featScores = {};
+        //   if (!direct) {
+        //     (resp.model?.explanations || []).forEach(txt => {
+        //       const m = txt.match(/High ([^ ]+) contributes/i);
+        //       if (m && m[1]) { featScores[m[1]] = (featScores[m[1]] || 0) + 1; }
+        //     });
+        //     if (Object.keys(featScores).length === 0) {
+        //       const fallback = resp.features || {};
+        //       Object.keys(fallback).slice(0, 6).forEach((k, idx) => featScores[k] = Math.max(1, Math.round((fallback[k] || 0) / Math.max(1, idx + 1))));
+        //     }
+        //   }
+
+        //   destroyChart(shapChart);
+        //   if (direct) {
+        //     shapChart = new Chart(els.shapBarsCtx, {
+        //       type: 'bar',
+        //       data: { labels: Object.keys(direct), datasets: [{ label: 'Importance', data: Object.values(direct) }] },
+        //       options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+        //     });
+        //   } else {
+        //     const labels = Object.keys(featScores);
+        //     const data = labels.map(l => featScores[l] || 0);
+        //     shapChart = new Chart(els.shapBarsCtx, {
+        //       type: 'bar',
+        //       data: { labels, datasets: [{ label: 'Importance', data }] },
+        //       options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+        //     });
+        //   }
+        // }
+
+        function renderShapBars(resp) {
+  if (!window.Chart || !els.shapBarsCtx) return;
+
+  const direct = resp.shap && typeof resp.shap === 'object' ? resp.shap : null;
+  const featScores = {};
+
+  if (!direct) {
+    (resp.model?.explanations || []).forEach(txt => {
+      const m = txt.match(/High ([^ ]+) contributes/i);
+      if (m && m[1]) featScores[m[1]] = (featScores[m[1]] || 0) + 1;
+    });
+  }
+
+  const labels = direct ? Object.keys(direct) : Object.keys(featScores);
+  const data = direct ? Object.values(direct) : labels.map(l => featScores[l] || 0);
+
+  destroyChart(shapChart);
+  shapChart = new Chart(els.shapBarsCtx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Importance', data }] },
+    options: {
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => `${ctx.label}: ${ctx.raw.toFixed(2)} impact` }
+        }
+      },
+      onClick: (e, elements) => {
+        if (elements.length > 0) {
+          const idx = elements[0].index;
+          const feature = labels[idx];
+          const impact = data[idx];
+          els.mlDecision.textContent = `Feature "${feature}" contributed ${impact.toFixed(2)}`;
+          els.mlDecision.className =
+            "px-3 py-1 rounded-full text-xs font-medium bg-blue-600/20 text-blue-400";
+        }
+      }
+    }
+  });
+}
+
+        function animateGauge(score) {
+          const needle = document.getElementById("gaugeNeedle");
+          const arc = document.getElementById("gaugeArc");
+          if (!needle) return;
+
+          const percent = Math.max(0, Math.min(100, +score || 0));
+          const angle = (percent / 100) * 180 - 90;
+
+          const apply = () => {
+            needle.style.transformOrigin = "50% 100%";   // ✅ CSS level
+            needle.style.transform = `rotate(${angle}deg)`;
+          };
+
+          try {
+            if (window.gsap) {
+              gsap.to(needle, {
+                rotation: angle,
+                duration: 0.8,
+                ease: "power3.out",
+                transformOrigin: "50% 100%"  // ✅ GSAP level
+              });
+            } else {
+              apply();
+            }
+          } catch (_) { apply(); }
+
+          if (arc) {
+            const total = 500, show = Math.round((percent / 100) * total);
+            arc.setAttribute("stroke-dasharray", `${show} ${total - show}`);
+          }
+        }
+
+
+
+        // ----------------------- YARA generation -----------------------
+        // function generateYara(resp) {
+        //   const name = (resp.meta?.package || 'sample_app').replace(/[^A-Za-z0-9_]/g, '_');
+        //   const sha = resp.meta?.sha256 || '';
+
+        //   // Collect strings
+        //   const strings = [];
+        //   // suspicious strings (truncate to safe length)
+        //   (resp.analysis?.suspicious?.strings || []).slice(0, 12).forEach((s) => {
+        //     if (!s) return;
+        //     const esc = String(s).replace(/"/g, '\\"').slice(0, 120);
+        //     if (esc.length >= 4) strings.push({ id: `s_${strings.length}`, val: esc });
+        //   });
+        //   // URLs/IPs -> also store small fragments to match
+        //   const suspicious = resp.analysis?.suspicious || {};
+        //   const urlList = suspicious.urls || suspicious.url_list || [];
+        //   const ipList = suspicious.ips || suspicious.ip_list || [];
+        //   urlList.slice(0, 8).forEach(u => {
+        //     const host = (String(u).match(/https?:\/\/([^\/]+)/i) || [])[1] || String(u);
+        //     const frag = host.slice(0, 80).replace(/"/g, '\\"');
+        //     if (frag.length >= 4) strings.push({ id: `u_${strings.length}`, val: frag });
+        //   });
+        //   ipList.slice(0, 8).forEach(ip => {
+        //     const frag = String(ip).replace(/"/g, '\\"');
+        //     if (frag.length >= 4) strings.push({ id: `ip_${strings.length}`, val: frag });
+        //   });
+        //   // permissions as strings (manifest contains them)
+        //   const perms = (resp.analysis?.permissions || []).slice(0, 12).map((p, i) => ({ id: `perm_${i}`, val: p }));
+        //   const danger = (resp.analysis?.dangerous_permissions || []).slice(0, 8).map((p, i) => ({ id: `dperm_${i}`, val: p }));
+
+        //   // Unique & build lines
+        //   const uniq = new Map();
+        //   [...strings, ...perms, ...danger].forEach(obj => { if (!uniq.has(obj.val)) uniq.set(obj.val, obj.id); });
+
+        //   const lines = [
+        //     `rule ${name}_SecureAPK {`,
+        //     `  meta:`,
+        //     `    description = "Auto-generated rule from SecureAPK static analysis"`,
+        //     `    src = "SecureAPK-ui"`,
+        //     `    sha256 = "${sha}"`,
+        //     `  strings:`
+        //   ];
+        //   let idx = 0;
+        //   for (const [val] of uniq) {
+        //     lines.push(`    $a${idx++} = "${val}" ascii nocase`);
+        //     if (idx >= 40) break; // cap to keep rule practical
+        //   }
+        //   // Conditions: at least 3 of our strings (tune as needed)
+        //   lines.push(`  condition:`);
+        //   lines.push(`    #a >= 3`);
+        //   lines.push('}');
+        //   return lines.join('\n');
+        // }
+
+        function generateYara(resp) {
+  // --- Rule Name ---
+  let name = (resp.meta?.package || 'sample_app')
+    .replace(/[^A-Za-z0-9_]/g, '_')
+    .replace(/^_+/, ''); // avoid starting with underscore
+  if (!name) name = "sample_app";
+  const sha = resp.meta?.sha256 || '';
+
+  // --- Collect candidate strings ---
+  const strings = [];
+  const suspicious = resp.analysis?.suspicious || {};
+
+  // Suspicious strings
+  (suspicious.strings || []).slice(0, 12).forEach((s) => {
+    if (!s) return;
+    const esc = String(s).replace(/"/g, '\\"').slice(0, 120);
+    if (esc.length >= 4) strings.push({ id: `s_${strings.length}`, val: esc });
+  });
+
+  // URLs → take host part
+  const urlList = suspicious.urls || suspicious.url_list || [];
+  urlList.slice(0, 8).forEach((u) => {
+    const host = (String(u).match(/https?:\/\/([^\/]+)/i) || [])[1] || String(u);
+    const frag = host.slice(0, 80).replace(/"/g, '\\"');
+    if (frag.length >= 4) strings.push({ id: `u_${strings.length}`, val: frag });
+  });
+
+  // IPs
+  const ipList = suspicious.ips || suspicious.ip_list || [];
+  ipList.slice(0, 8).forEach((ip) => {
+    const frag = String(ip).replace(/"/g, '\\"');
+    if (frag.length >= 4) strings.push({ id: `ip_${strings.length}`, val: frag });
+  });
+
+  // Permissions
+  const perms = (resp.analysis?.permissions || []).slice(0, 12)
+    .map((p, i) => ({ id: `perm_${i}`, val: String(p).replace(/"/g, '\\"') }));
+
+  const danger = (resp.analysis?.dangerous_permissions || []).slice(0, 8)
+    .map((p, i) => ({ id: `dperm_${i}`, val: String(p).replace(/"/g, '\\"') }));
+
+  // --- Deduplicate ---
+  const uniq = new Map();
+  [...strings, ...perms, ...danger].forEach(obj => {
+    if (!obj || !obj.val) return;
+    if (!uniq.has(obj.val)) uniq.set(obj.val, obj.id);
+  });
+
+  // --- Build rule ---
+  const lines = [
+    `rule ${name}_SecureAPK {`,
+    `  meta:`,
+    `    description = "Auto-generated rule from SecureAPK static analysis"`,
+    `    author = "SecureAPK"`,
+    `    date = "${new Date().toISOString().slice(0,10)}"`,
+    `    sha256 = "${sha}"`,
+    `  strings:`
+  ];
+
+  let idx = 0;
+  for (const [val] of uniq) {
+    lines.push(`    $a${idx++} = "${val}" ascii nocase`);
+    if (idx >= 40) break; // cap
+  }
+
+  // Condition: if fewer than 3 strings → require at least 1
+  const needed = Math.min(3, idx);
+
+  lines.push(`  condition:`);
+  lines.push(`    #a >= ${needed}`);
+  lines.push('}');
+
+  return lines.join('\n');
+}
+
+
+        // ----------------------- Populate Dashboard -----------------------
+        function renderList(el, arr) {
+          if (!el) return;
+          if (!arr || !arr.length) { el.textContent = '—'; return; }
+          const short = arr.slice(0, 7);
+          el.innerHTML = short.map(i => `<div class="text-sm text-slate-300">${i}</div>`).join('');
+        }
+        function renderSuspicious(summaryEl, suspicious = {}) {
+  if (!summaryEl) return;
+  latestSuspicious = suspicious;
+
+  // collapsed summary
+  const urlCount = suspicious.url_count ?? suspicious.urls?.length ?? 0;
+  const ipCount  = suspicious.ip_count ?? suspicious.ips?.length ?? 0;
+  const kwCount  = suspicious.keyword_hits ?? 0;
+  summaryEl.textContent = `URLs: ${urlCount} | IPs: ${ipCount} | KWs: ${kwCount}`;
+
+  // expanded details
+  const expEl = document.getElementById("suspiciousExpanded");
+  if (expEl) {
+    const lines = [];
+    if (suspicious.urls?.length) {
+      lines.push("URLs:");
+      lines.push(...suspicious.urls.map(u => " - " + u));
+    }
+    if (suspicious.ips?.length) {
+      lines.push("\nIPs:");
+      lines.push(...suspicious.ips.map(ip => " - " + ip));
+    }
+    if (typeof suspicious.keyword_hits === "number") {
+      lines.push("\nKeyword hits: " + suspicious.keyword_hits);
+    }
+    expEl.textContent = lines.join("\n") || "—";
+  }
+}
+
+// Button toggle (animation without JS hacks)
+const btn = document.getElementById("toggleIocs1");
+const expEl = document.getElementById("suspiciousExpanded");
+
+if (btn && expEl) {
+  btn.addEventListener("click", () => {
+    iocsExpanded = !iocsExpanded;
+    btn.textContent = iocsExpanded ? "Show less" : "Show more";
+
+    if (iocsExpanded) {
+      expEl.classList.remove("max-h-0", "overflow-hidden");
+      expEl.classList.add("max-h-64", "overflow-y-auto"); // 16rem height cap
+    } else {
+      expEl.classList.add("max-h-0", "overflow-hidden");
+      expEl.classList.remove("max-h-64", "overflow-y-auto");
+    }
+  });
+}
+
+        function renderIndicators(resp) {
+          if (!els.indicators) return;
+          els.indicators.innerHTML = '';
+          const blocks = [
+            { k: 'Bad Cert', v: resp.analysis?.cert_trusted_match ? 'No' : 'Yes' },
+            { k: 'VT Detections', v: resp.analysis?.vt?.detections || resp.virustotal?.malicious || 0 },
+            { k: 'MB Hits', v: resp.analysis?.malwarebazaar?.detections || 0 },
+            { k: 'Icon Match', v: (resp.analysis?.icon_similarity_score || 0).toFixed(2) },
+            { k: 'Entropy', v: resp.analysis?.entropy_classes_dex ?? '—' }
+          ];
+          blocks.forEach(b => {
+            const el = document.createElement('div');
+            el.className = 'p-2 rounded bg-[#061827] text-sm';
+            el.innerHTML = `<div class="text-xs text-slate-400">${b.k}</div><div class="text-sm font-medium mt-1">${b.v}</div>`;
+            els.indicators.appendChild(el);
+          });
+        }
+        function renderHistory() {
+          if (!els.historyBlock) return;
+          els.historyBlock.innerHTML = '';
+          const sessionsLocal = JSON.parse(localStorage.getItem('bs_sessions') || '[]');
+          sessionsLocal.slice(0, 10).forEach(s => {
+            const d = document.createElement('div');
+            d.className = 'p-2 rounded bg-[#05131b] text-sm mb-1 flex items-center justify-between';
+            d.innerHTML = `<div><div class='font-medium'>${s.name}</div><div class='text-xs text-slate-400'>${s.time}</div></div><div><button class='px-2 py-1 rounded bg-white/6 open'>Open</button></div>`;
+            d.querySelector('.open').addEventListener('click', () => { lastAnalysis = s.data; populateDashboard(s.data); switchTab('overview'); });
+            els.historyBlock.appendChild(d);
+          });
+        }
+
+        function populateDashboard(resp) {
+          if (!resp) return;
+
+          // Meta & headers
+          const meta = resp.meta || {};
+          safeText(els.fileMeta, meta.package ? `${meta.package} • v${meta.version_name || '—'}` : (meta.sha256 || 'APK'));
+          safeText(els.currentFile, meta.app_label || meta.package || (meta.sha256 ? meta.sha256.slice(0, 8) : '—'));
+
+          // Final score/decision (robust)
+          const finalScore = (resp.model?.final_score ?? resp.risk_score ?? resp.model?.probability_fake ?? null);
+          const decision = resp.model?.decision ?? (finalScore !== null ? (finalScore >= 50 ? 'Malicious' : 'Benign') : '—');
+          safeText(els.finalScoreEl, finalScore !== null ? `${finalScore}%` : '—');
+          safeText(els.kpiRisk, finalScore !== null ? `${finalScore}%` : '—');
+          safeText(els.finalDecisionEl, decision);
+          safeText(els.summaryText, decision);
+          safeText(els.confBadge, resp.model?.probability_fake !== undefined ? `${resp.model.probability_fake}%` : (resp.ml_confidence?.malware !== undefined ? `${resp.ml_confidence.malware}%` : '—'));
+          safeText(els.countPerms, (resp.analysis?.permissions?.length || 0).toString());
+
+          const iocCount = (resp.analysis?.suspicious?.url_count || 0) + (resp.analysis?.suspicious?.ip_count || 0) + (resp.analysis?.suspicious?.keyword_hits || 0);
+          safeText(els.countIocs, (iocCount || resp.iocs?.ips || resp.iocs?.domains || resp.iocs?.urls || resp.iocs?.hashes) ? String(iocCount) : '0');
+
+          animateGauge(finalScore ?? 0);
+
+          // KPIs raw
+          safeText(els.kpiVT, (resp.analysis?.vt?.detections !== undefined && resp.analysis?.vt?.total !== undefined)
+            ? `${resp.analysis.vt.detections} / ${resp.analysis.vt.total}` : (
+              resp.virustotal?.malicious !== undefined ? `${resp.virustotal.malicious} malicious` : '—'
+            )
+          );
+          safeText(els.kpiMB, (resp.analysis?.malwarebazaar?.detections ?? '—').toString());
+
+          // Raw JSONs
+          // if (els.vtRaw) els.vtRaw.textContent = JSON.stringify(resp.analysis?.vt || resp.virustotal || {}, null, 2);
+          // if (els.mbRaw) els.mbRaw.textContent = JSON.stringify(resp.analysis?.malwarebazaar || {}, null, 2);
+          // VirusTotal
+if (els.vtRaw) {
+  const vt = resp.analysis?.vt || resp.virustotal;
+  if (vt && vt.detections !== undefined && vt.total !== undefined) {
+    els.vtRaw.textContent = `${vt.detections} / ${vt.total} detections`;
+  } else {
+    els.vtRaw.textContent = vt ? JSON.stringify(vt, null, 2) : '—';
+  }
+}
+
+// MalwareBazaar
+if (els.mbRaw) {
+  const mb = resp.analysis?.malwarebazaar;
+  if (mb && mb.detections !== undefined) {
+    els.mbRaw.textContent = `${mb.detections} detections`;
+  } else if (mb?.raw?.error) {
+    els.mbRaw.textContent = `Error: ${mb.raw.error}`;
+  } else {
+    els.mbRaw.textContent = mb ? JSON.stringify(mb, null, 2) : '—';
+  }
+}
+
+          // Lists
+          renderList(els.permList, resp.analysis?.permissions || []);
+          renderList(els.dangerPerms, resp.analysis?.dangerous_permissions || []);
+          renderSuspicious(els.suspiciousList, resp.analysis?.suspicious || {});
+          renderSuspicious(els.suspiciousList1, resp.analysis?.suspicious || {});
+
+          safeText(els.entropyVal, resp.analysis?.entropy_classes_dex ?? '—');
+          safeText(els.certFingerprint, resp.analysis?.cert_fingerprint ?? '—');
+          safeText(els.certTrustEl, resp.analysis?.cert_trusted_match ? 'Trusted' : 'Not Trusted');
+          safeText(els.iconSimScore, 'Similarity: ' + (resp.analysis?.icon_similarity_score ?? 0));
+          safeText(els.hashesBlock, meta.sha256 ? 'SHA256: ' + meta.sha256 : '—');
+
+          renderIndicators(resp);
+          renderIocChartFrom(resp);
+
+          // ML donut
+          const fakePct = (resp.model?.probability_fake ?? resp.ml_confidence?.malware ?? (finalScore ?? 0));
+          const safePct = Math.max(0, 100 - (fakePct || 0));
+          renderMlDonut(fakePct, safePct);
+
+          // SHAP bars
+          renderShapBars(resp);
+
+          // Explanations (list)
+          if (els.explanationsList) {
+            els.explanationsList.innerHTML = '';
+            (resp.model?.explanations || []).forEach(e => {
+              const li = document.createElement('li'); li.textContent = e; els.explanationsList.appendChild(li);
+            });
+          }
+
+          // VT bar (new)
+          renderVTBar(resp);
+
+          // YARA
+          if (els.yaraOutput) els.yaraOutput.value = generateYara(resp);
+
+          // History block
+          renderHistory();
+
+          localStorage.setItem('bs_last', JSON.stringify(resp));
+        }
+
+        // ----------------------- Exports -----------------------
+        function downloadJSON() {
+          if (!lastAnalysis) { alert('No analysis to download'); return; }
+          const blob = new Blob([JSON.stringify(lastAnalysis, null, 2)], { type: 'application/json' });
+          saveAs(blob, 'SecureAPK_analysis.json');
+        }
+        function downloadCSV() {
+          if (!lastAnalysis) { alert('No analysis to download'); return; }
+          const row = {
+            sha256: lastAnalysis.meta?.sha256 || '',
+            package: lastAnalysis.meta?.package || '',
+            app_label: lastAnalysis.meta?.app_label || '',
+            final_score: lastAnalysis.model?.final_score ?? lastAnalysis.risk_score ?? '',
+            ml_prob: lastAnalysis.model?.probability_fake ?? lastAnalysis.ml_confidence?.malware ?? '',
+            vt_malicious: lastAnalysis.virustotal?.malicious ?? lastAnalysis.analysis?.vt?.detections ?? '',
+            vt_total: lastAnalysis.virustotal?.total ?? lastAnalysis.analysis?.vt?.total ?? '',
+            mb_hits: lastAnalysis.analysis?.malwarebazaar?.detections ?? ''
+          };
+          const csv = Object.keys(row).join(',') + '\n' + Object.values(row).map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+          saveAs(blob, 'SecureAPK_summary.csv');
+        }
+        function downloadPDF() {
+          if (!lastAnalysis) { alert('No analysis to download'); return; }
+          try {
+            if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('jsPDF missing');
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+            doc.setFontSize(18); doc.text('SecureAPK Analysis Report', 40, 50);
+            doc.setFontSize(11);
+            doc.text(`SHA256: ${lastAnalysis.meta?.sha256 || ''}`, 40, 80);
+            doc.text(`Package: ${lastAnalysis.meta?.package || ''}`, 40, 100);
+            doc.text(`Final Decision: ${lastAnalysis.model?.decision || (lastAnalysis.risk_score >= 50 ? 'Malicious' : 'Benign') || ''}`, 40, 120);
+            const score = lastAnalysis.model?.final_score ?? lastAnalysis.risk_score ?? '';
+            doc.text(`Final Score: ${score}%`, 40, 140);
+            doc.text('Key reasons:', 40, 170);
+            (lastAnalysis.model?.explanations || []).slice(0, 6).forEach((r, i) => doc.text(`- ${r}`, 60, 190 + i * 16));
+            doc.save('SecureAPK_report.pdf');
+          } catch (e) {
+            // fallback: simple .txt if jsPDF not loaded
+            const txt = `SecureAPK Report
+SHA256: ${lastAnalysis.meta?.sha256 || ''}
+Package: ${lastAnalysis.meta?.package || ''}
+Decision: ${lastAnalysis.model?.decision || (lastAnalysis.risk_score >= 50 ? 'Malicious' : 'Benign') || ''}
+Score: ${lastAnalysis.model?.final_score ?? lastAnalysis.risk_score ?? ''}%`;
+            const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+            saveAs(blob, 'SecureAPK_report.txt');
+          }
+        }
+
+        // bind any available export buttons (both id sets supported)
+        [els.downloadJsonBtn, els.exportJson].forEach(b => b && b.addEventListener('click', downloadJSON));
+        [els.downloadCsvBtn, els.exportCsv].forEach(b => b && b.addEventListener('click', downloadCSV));
+        [els.downloadPdfBtn, els.exportPdf].forEach(b => b && b.addEventListener('click', downloadPDF));
+
+        if (els.downloadYara) els.downloadYara.addEventListener('click', () => {
+          if (!els.yaraOutput) return;
+          const blob = new Blob([els.yaraOutput.value], { type: 'text/plain;charset=utf-8' });
+          saveAs(blob, 'SecureAPK_rule.yar');
+        });
+        if (els.copyYara) els.copyYara.addEventListener('click', async () => {
+          if (!els.yaraOutput) return;
+          try { await navigator.clipboard.writeText(els.yaraOutput.value); alert('Copied YARA to clipboard'); } catch (_) { }
+        });
+
+        if (els.openLastBtn) els.openLastBtn.addEventListener('click', () => {
+          const last = localStorage.getItem('bs_last'); if (!last) { alert('No last analysis'); return; }
+          lastAnalysis = JSON.parse(last); populateDashboard(lastAnalysis); switchTab('overview');
+        });
+
+        if (els.gotoMlTab) els.gotoMlTab.addEventListener('click', () => switchTab('ml'));
+        if (els.gotoStaticTab) els.gotoStaticTab.addEventListener('click', () => switchTab('static'));
+
+        // ----------------------- Show more toggles -----------------------
+        let permsExpanded = false, iocsExpanded = false;
+        if (els.togglePerms) els.togglePerms.addEventListener('click', () => {
+          permsExpanded = !permsExpanded;
+          const full = lastAnalysis?.analysis?.permissions || [];
+          if (els.permList) els.permList.innerHTML = permsExpanded ? full.map(p => `<div>${p}</div>`).join('') : (full.slice(0, 7).map(p => `<div>${p}</div>`).join('') || '—');
+          els.togglePerms.textContent = permsExpanded ? 'Show less' : 'Show more';
+        });
+        if (els.toggleIocs) els.toggleIocs.addEventListener('click', () => {
+          iocsExpanded = !iocsExpanded;
+          const s = lastAnalysis?.analysis?.suspicious || {};
+          if (els.suspiciousList) els.suspiciousList.innerHTML = iocsExpanded ? `<pre>${JSON.stringify(s, null, 2)}</pre>` : `URLs: ${s.url_count || 0}, IPs: ${s.ip_count || 0}, KWs: ${s.keyword_hits || 0}`;
+          els.toggleIocs.textContent = iocsExpanded ? 'Show less' : 'Show more';
+        });
+
+        // ----------------------- Health ping -----------------------
+        (async function pingApi() {
+          if (!els.apiHealth) return;
+          try {
+            const r = await fetch('/health'); const j = await r.json();
+            setHTML(els.apiHealth, `<span class="w-2 h-2 inline-block rounded-full bg-emerald-400"></span> API: ${j.status}`);
+          } catch (e) {
+            setHTML(els.apiHealth, `<span class="w-2 h-2 inline-block rounded-full bg-red-600"></span> API: offline`);
+          }
+        })();
+
+      })();
+
+  
+  </script>
+
+
+<script>
+  const dangerBox = byId("dangerPerms");
+const dangerBtn = byId("toggleDanger");
+dangerBtn.onclick = () => {
+  if (dangerBox.classList.contains("max-h-32")) {
+    dangerBox.classList.remove("max-h-32");
+    dangerBtn.textContent = "Show less";
+  } else {
+    dangerBox.classList.add("max-h-32");
+    dangerBtn.textContent = "Show more";
+  }
+};
+
+
+</script>
+</body>
+
+</html>
