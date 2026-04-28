@@ -1,0 +1,148 @@
+name: SecureAPK Security Pipeline
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gitleaks:
+    name: Secret Detection (Gitleaks)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  bandit:
+    name: SAST (Bandit)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Bandit
+        run: python -m pip install --upgrade pip bandit
+
+      - name: Run Bandit
+        run: |
+          bandit -r . -f json -o bandit-report.json || true
+          bandit -r . || true
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+          if-no-files-found: ignore
+
+  pip-audit:
+    name: SCA (pip-audit)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-audit
+        run: python -m pip install --upgrade pip pip-audit
+
+      - name: Audit dependencies
+        run: |
+          if [ -f requirements-lightsail.txt ]; then
+            pip-audit -r requirements-lightsail.txt -f json -o pip-audit-report.json || true
+            pip-audit -r requirements-lightsail.txt || true
+          elif [ -f requirements.txt ]; then
+            pip-audit -r requirements.txt -f json -o pip-audit-report.json || true
+            pip-audit -r requirements.txt || true
+          else
+            echo "No requirements file found."
+          fi
+
+      - name: Upload pip-audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: pip-audit-report.json
+          if-no-files-found: ignore
+
+  syft:
+    name: SBOM Generation (Syft)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Generate SBOM
+        run: |
+          syft dir:. -o spdx-json > sbom.spdx.json || true
+          syft dir:. -o table || true
+
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: secureapk-sbom
+          path: sbom.spdx.json
+          if-no-files-found: ignore
+
+  grype:
+    name: SBOM Scanning (Grype)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    needs: syft
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download SBOM
+        uses: actions/download-artifact@v4
+        with:
+          name: secureapk-sbom
+          path: ./sbom
+
+      - name: Install Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Scan SBOM
+        run: |
+          if [ -f ./sbom/sbom.spdx.json ]; then
+            grype sbom:./sbom/sbom.spdx.json -o table || true
+            grype sbom:./sbom/sbom.spdx.json -o json > grype-report.json || true
+          else
+            echo "SBOM not found."
+          fi
+
+      - name: Upload Grype report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype-report
+          path: grype-report.json
+          if-no-files-found: ignore
